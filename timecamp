@@ -3,58 +3,119 @@ require 'optparse'
 require 'active_support/all'
 require 'yaml'
 require 'rest-client'
+require 'terminal-table'
 
-BASE_REQUEST = 'https://www.timecamp.com/third_party/api'
+class TimeCamp
+  BASE_REQUEST = 'https://www.timecamp.com/third_party/api'
 
-options = {}
+  attr_reader :api_token
 
-def api_token
-  token = ''
-  begin
-    File.open("#{ ENV["HOME"] }/.timecamp", 'r') { |file| token = YAML.load(file.read)[:api_token] }
-  rescue Errno::ENOENT
-    puts 'You must set your api token with $timecamp --set_token TOKEN' and abort
+  def initialize(options)
+    @api_token = get_api_token(options[:token])
   end
 
-  if token.blank?
-    puts 'You must set your api token with $timecamp --set_token TOKEN' and abort
-  else
-    return token
+  def get_entries!(from = nil, to = nil)
+    from ||= Date.today.beginning_of_day.strftime('%Y-%m-%d')
+    to ||= Date.today.end_of_day.strftime('%Y-%m-%d')
+    uri = BASE_REQUEST + "/entries/format/json/api_token/#{ @api_token }/from/#{ from }/to/#{ to }"
+
+    response = RestClient.get uri
+    rows = JSON.parse(response.body).map{ |entry| [entry['user_name'], entry['name'], entry['start_time'], entry['end_time'], (entry['duration'].to_i / 60).to_s + ' min'] }
+    table_print({ headings: %w(User Task Start End Duration), rows: rows })
   end
+
+  def begin_task!(task)
+    # uri = URI.parse("#{BASE_REQUEST}/")
+    # response = RestClient.post(uri)
+    task_id = get_task_id(task)
+
+    if task_id.present?
+      # https://www.timecamp.com/third_party/api/entries/api_token/a36cabi96bba83f826
+      uri = BASE_REQUEST + '/timer/format/json/api_token/' + @api_token
+      response = RestClient.post uri, { action: 'start', task_id: task_id }
+      puts 'timer started!' if response.status == 200
+    end
+  end
+
+  def table_print(options)
+    table = Terminal::Table.new(options)
+    puts table
+  end
+
+  private
+    def get_api_token(token)
+      if api_token.blank?
+       token = read_token
+      else
+        write_token(token)
+      end
+      return token
+    end
+
+    def read_token
+      token = ''
+      begin
+        File.open("#{ ENV["HOME"] }/.timecamp", 'r') { |file| token = YAML.load(file.read)[:api_token] }
+      rescue Errno::ENOENT
+        puts 'You must set your api token with $timecamp --set_token TOKEN' and abort
+      end
+      return token
+    end
+
+    def write_token
+      File.open("#{ ENV["HOME"] }/.timecamp", 'w') do |file|
+        hash = {}
+        hash[:api_token] = options[:token]
+        file << hash.to_yaml
+      end
+    end
+
+    def get_task_id(task)
+      tasks = get_tasks
+      return tasks.map{ |key, value| value }.select{ |t| t['name'] == task }[0]['task_id']
+    end
+
+    def get_tasks
+      uri = BASE_REQUEST + '/tasks/format/json/api_token/' + @api_token
+      response = RestClient.get uri
+
+      return JSON.parse(response.body)
+    end
 end
+
+options = { }
 
 OptionParser.new do |parser|
   parser.on("-s", "--set_token TOKEN", "Set the API token.") do |token|
     options[:token] = token
   end
-  parser.on("-t", "--begin TASK", "Begin timing task.") do |task|
-    options[:task] = task
+  parser.on("-b", "--begin TASK", "Begin timing task.") do |task|
+    options[:begin_task] = task
   end
-  parser.on('-g', '--get_today', "Get today's entries") do |task|
-    from = Date.today.beginning_of_day.strftime('%Y-%m-%d')
-    to = Date.today.end_of_day.strftime('%Y-%m-%d')
-    uri = BASE_REQUEST + "/entries/format/json/api_token/#{ api_token }/from/#{ from }/to/#{ to }"
-
-    response = RestClient.get uri
-    JSON.parse(response.body).each{ |entry| puts entry }
+  parser.on('-s', '--stop TASK', 'Stop timing task.') do |task|
+    options[:stop_task] = task
+  end
+  parser.on('-e', '--entries', "Get today's entries") do |entries|
+    options[:entries] = true
+  end
+  parser.on('-f', '--from FROM', "Supply a starting date") do |from|
+    options[:from] = from
+  end
+  parser.on('-t', '--to TO', "Supply a starting date") do |to|
+    options[:to] = to
   end
 end.parse!
 
+timecamp = TimeCamp.new(options)
 
-# if given a token
-if options[:token].present?
-  # open file
-  File.open("#{ ENV["HOME"] }/.timecamp", 'w') do |file|
-    hash = {}
-    hash[:api_token] = options[:token]
-    file << hash.to_yaml
-  end
+# GET ENTRIES
+if options[:entries] == true
+  timecamp.get_entries!(options[:from], options[:to])
 end
 
-# if given a task
-if options[:task].present?
-  uri = URI.parse("#{BASE_REQUEST}/")
-  response = RestClient.post(uri)
+# START TASK
+if options[:begin_task].present?
+  timecamp.begin_task!(options[:begin_task])
 end
 
 
