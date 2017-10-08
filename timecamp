@@ -4,9 +4,6 @@ require 'active_support/all'
 require 'yaml'
 require 'rest-client'
 
-
-
-
 BASE_REQUEST = 'https://www.timecamp.com/third_party/api'
 
 options = {}
@@ -14,10 +11,7 @@ options = {}
 def api_token
   token = ''
   begin
-    File.open("#{ ENV["HOME"] }/.timecamp", 'r') do |file|
-      hash = YAML.load(file.read)
-      token = hash[:api_token]
-    end
+    File.open("#{ ENV["HOME"] }/.timecamp", 'r') { |file| token = YAML.load(file.read)[:api_token] }
   rescue Errno::ENOENT
     puts 'You must set your api token with $timecamp --set_token TOKEN' and abort
   end
