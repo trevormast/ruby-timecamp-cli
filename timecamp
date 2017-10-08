@@ -25,14 +25,23 @@ class TimeCamp
   end
 
   def begin_task!(task)
-    # uri = URI.parse("#{BASE_REQUEST}/")
-    # response = RestClient.post(uri)
     task_id = get_task_id(task)
 
     if task_id.present?
       # https://www.timecamp.com/third_party/api/entries/api_token/a36cabi96bba83f826
       uri = BASE_REQUEST + '/timer/format/json/api_token/' + @api_token
       response = RestClient.post uri, { action: 'start', task_id: task_id }
+      puts 'timer started!' if response.status == 200
+    end
+  end
+
+  def stop_task!(task)
+    task_id = get_task_id(task)
+
+    if task_id.present?
+      # https://www.timecamp.com/third_party/api/entries/api_token/a36cabi96bba83f826
+      uri = BASE_REQUEST + '/timer/format/json/api_token/' + @api_token
+      response = RestClient.post uri, { action: 'stop', task_id: task_id }
       puts 'timer started!' if response.status == 200
     end
   end
@@ -116,6 +125,10 @@ end
 # START TASK
 if options[:begin_task].present?
   timecamp.begin_task!(options[:begin_task])
+end
+
+if options[:stop_task].present?
+  timecamp.stop_task!(options[:stop_task])
 end
 
 
