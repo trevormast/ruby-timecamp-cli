@@ -1,4 +1,3 @@
-
 #!/usr/bin/env ruby
 require 'optparse'
 require 'active_support/all'
@@ -14,11 +13,20 @@ options = {}
 
 def api_token
   token = ''
-  File.open("#{ ENV["HOME"] }/.timecamp", 'r') do |file|
-    hash = YAML.load(file.read)
-    token = hash[:api_token]
+  begin
+    File.open("#{ ENV["HOME"] }/.timecamp", 'r') do |file|
+      hash = YAML.load(file.read)
+      token = hash[:api_token]
+    end
+  rescue Errno::ENOENT
+    puts 'You must set your api token with $timecamp --set_token TOKEN' and abort
   end
-  return token
+
+  if token.blank?
+    puts 'You must set your api token with $timecamp --set_token TOKEN' and abort
+  else
+    return token
+  end
 end
 
 OptionParser.new do |parser|
