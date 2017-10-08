@@ -15,9 +15,9 @@ class TimeCamp
   end
 
   def get_entries!(from = nil, to = nil)
-    from ||= Date.today.beginning_of_day.strftime('%Y-%m-%d')
-    to ||= Date.today.end_of_day.strftime('%Y-%m-%d')
-    uri = BASE_REQUEST + "/entries/format/json/api_token/#{ @api_token }/from/#{ from }/to/#{ to }"
+    from ||= Date.today.beginning_of_day
+    to ||= Date.today.end_of_day
+    uri = BASE_REQUEST + "/entries/format/json/api_token/#{ @api_token }/from/#{ from.strftime('%Y-%m-%d') }/to/#{ to.strftime('%Y-%m-%d') }"
 
     response = RestClient.get uri
     rows = JSON.parse(response.body).map{ |entry| [entry['user_name'], entry['name'], entry['start_time'], entry['end_time'], (entry['duration'].to_i / 60).to_s + ' min'] }
@@ -31,7 +31,7 @@ class TimeCamp
       # https://www.timecamp.com/third_party/api/entries/api_token/a36cabi96bba83f826
       uri = BASE_REQUEST + '/timer/format/json/api_token/' + @api_token
       response = RestClient.post uri, { action: 'start', task_id: task_id }
-      puts 'timer started!' if response.status == 200
+      puts 'timer started!'
     end
   end
 
@@ -42,7 +42,7 @@ class TimeCamp
       # https://www.timecamp.com/third_party/api/entries/api_token/a36cabi96bba83f826
       uri = BASE_REQUEST + '/timer/format/json/api_token/' + @api_token
       response = RestClient.post uri, { action: 'stop', task_id: task_id }
-      puts 'timer started!' if response.status == 200
+      puts 'timer stopped!'
     end
   end
 
