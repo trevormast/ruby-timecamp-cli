@@ -110,7 +110,7 @@ OptionParser.new do |parser|
   parser.on('-f', '--from FROM', "Supply a starting date") do |from|
     options[:from] = from
   end
-  parser.on('-t', '--to TO', "Supply a starting date") do |to|
+  parser.on('-t', '--to TO', "Supply an ending date") do |to|
     options[:to] = to
   end
 end.parse!
